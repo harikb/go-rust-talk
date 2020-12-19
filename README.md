@@ -1,6 +1,6 @@
 # Talk slides for a Chennai Rust Meetup
 
-# To render this talk in `go present`
+# To render this talk in go tool `present`
 
 ```
 mkdir -p ${GOPATH}/src/golang.org/x/

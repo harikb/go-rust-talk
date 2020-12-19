@@ -1,0 +1,199 @@
+# `Go`ing the extra mile with Rust
+
+Hari Bhaskaran
+18 Dec 2020
+hari@adobe.com
+https://twitter.com/yetanotherfella
+
+## A humble comparison of Go vs Rust
+
+_Please keep an open mind. No Gophers or Crabs will be harmed_
+
+- A utility written in both languages
+- Go version is functional, Rust version is WIP
+- Both are opensource
+
+## Introducing `blackhole`
+
+- Capture incoming HTTP(s) traffic and act like a `/dev/null`
+- Record traffic for replay / debugging later.
+- A utility knife with many uses
+- Available at http://github.com/adobe/blackhole
+
+## Usecase #1
+
+- Capture traffic by running this *instead* of your real service and record requests
+- Requires client to not expect anything more fancier than a `200 OK`
+
+![](diagrams/usercase01.png)
+
+## Usecase #2
+
+- Capture traffic by running this *instead* of your real service and drop requests.
+- To check 
+	- theoretical maximums for your network / node
+	- Stress-test your web client
+	- Stress-test your Server-to-Server API client.
+
+![](diagrams/usercase02.png)
+
+## Usecase #3
+
+- Capture traffic and replay specific requests.
+
+![](diagrams/usercase03.png)
+
+## Usecase #4
+
+- Create "more traffic" with real test data.
+
+![](diagrams/usercase04.png)
+
+## Usecase #5
+
+- For clients where a simple http 200 wouldn't do
+- You have a need to record / sample real production traffic
+- NOTE: SSL termination must be external
+
+![](diagrams/usercase05.png)
+
+## Wait? where is the Rust connection?
+
+- Go version can record ~150k req/sec of 2k payload on a Macbook Pro
+- Was curious where the limit was and I had a Rust-ing itch to scratch.
+- WIP http://github.com/adobe/void  (experimental/prototype-level, not functional)
+
+## Optimization factors: Important ones (common to both Go or Rust)
+
+- Client connection reuse
+- Creation of real or green thread per request
+- Memory allocations and copies per request
+- General quality and efficiency of code
+- Library support
+
+## Optimization factors: Less important
+
+Contrary to what you might think...
+
+- Go's garbage collector (will explain why)
+
+## Key architecture
+
+![](https://raw.githubusercontent.com/adobe/blackhole/master/design.png)
+
+Also see https://google.github.io/flatbuffers/flatbuffers_benchmarks.html
+
+## Key architecture - HTTP layer fasthttp
+
+Handler code in Go
+
+- ctx object is reused and backed up by reusable buffers
+- promises `0 allocs/op` - that is no new malloc
+- No dangling references allowed when method terminates
+
+.code snippet01a.go
+
+## Key architecture - HTTP layer fasthttp
+
+Well slightly more code
+
+.code snippet01b.go
+
+## Key architecture - HTTP layer in Rust
+
+Rust (Decision time.. can I `async` or not?)
+
+- hyper.rs for HTTP layer
+- tokio::sync::mpsc::channel for channel
+- Ideally want MPMC (Multiple Producer, Multiple Consumer)
+- Settling for MPSC (Single Consumer)
+- Each crate needs to be careful vetted for `blocking` calls.
+
+## Key architecture - HTTP layer Rust handler
+
+Handler code in Rust (lots of freedom, closure nirvana)
+
+.code snippet02.rs
+
+## Key architecture - HTTP layer Rust handler
+
+Handler code in Rust (lots of freedom, closure nirvana)
+
+.code snippet03.rs
+
+## Key architecture - HTTP layer Rust handler
+
+Handler code in Rust (lots of freedom, closure nirvana)
+
+.code snippet04.rs
+
+## Key architecture - Serialization via Flatbuffers#
+
+Back to Go. Remember this peice of code?
+
+.code snippet05.go
+
+## Key architecture - Serialization via Flatbuffers#
+
+It is all about (close to) "zero allocations" in the hot path
+
+.code snippet06.go
+
+## Key architecture - Serialization via Flatbuffers#
+
+Reading from channel and recording to disk
+
+.code snippet07.go
+
+## Key architecture - Serialization via Flatbuffers#
+
+Reading from channel and recording to disk
+
+.code snippet08.go
+
+## Key architecture - Serialization via Flatbuffers#
+
+Real advantage of FlatBuffers comes in when you *read or deserialize*
+
+.code snippet09.go
+
+## Key architecture - Writing to disk
+
+For Go, there isn't really much to do compress the output stream
+
+[https://godoc.org/github.com/pierrec/lz4#NewWriter](https://godoc.org/github.com/pierrec/lz4#NewWriter)
+
+---
+	func NewWriter(dst io.Writer) *Writer
+---
+NewWriter returns a new LZ4 frame encoder. No access to the underlying io.Writer is performed.
+The supplied Header is checked at the first Write.
+It is ok to change it before the first Write but then not until a Reset() is performed.
+
+I/O Subsystem is automatically asynchronous and Go does the best possible sequencing already
+
+## Key architecture - Writing to disk
+
+For Rust, there is little more work involved
+
+- No `async/tokio` compatible crates available for LZ4
+- Currently using `flate2` crate
+- Still haven't figured out how to enable "async" variant :o 
+
+---
+	flate2 = { version = "0.2", features = ["tokio"] }
+---
+
+## Key architecture - Writing to disk
+
+For Rust, there is little more work involved
+
+.code snippet10.rs
+
+## Current state  of Rust prototype
+
+- Many features are missing, but those are less of a problem
+- Performance of Rust version is "90%" of the Go version. _Yes, I understand I have limited experience with Rust compared to Go_
+- Ideally want to find the limit of what is possible _if I go the extra mile_
+- Code legibility and maintanability is still important.
+- Contributions and help welcome! [http://github.com/adobe/void](http://github.com/adobe/void)
