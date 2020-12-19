@@ -5,7 +5,7 @@ Hari Bhaskaran
 hari@adobe.com
 https://twitter.com/yetanotherfella
 
-## A humble comparison of Go vs Rust
+## A pragmatic comparison of Go vs Rust
 
 _Please keep an open mind. No Gophers or Crabs will be harmed_
 
@@ -20,14 +20,14 @@ _Please keep an open mind. No Gophers or Crabs will be harmed_
 - A utility knife with many uses
 - Available at http://github.com/adobe/blackhole
 
-## Usecase #1
+## Basic Usage
 
 - Capture traffic by running this *instead* of your real service and record requests
 - Requires client to not expect anything more fancier than a `200 OK`
 
 ![](diagrams/usercase01.png)
 
-## Usecase #2
+## Usecase #1
 
 - Capture traffic by running this *instead* of your real service and drop requests.
 - To check 
@@ -37,19 +37,19 @@ _Please keep an open mind. No Gophers or Crabs will be harmed_
 
 ![](diagrams/usercase02.png)
 
-## Usecase #3
+## Usecase #2
 
 - Capture traffic and replay specific requests.
 
 ![](diagrams/usercase03.png)
 
-## Usecase #4
+## Usecase #3
 
 - Create "more traffic" with real test data.
 
 ![](diagrams/usercase04.png)
 
-## Usecase #5
+## Usecase #4
 
 - For clients where a simple http 200 wouldn't do
 - You have a need to record / sample real production traffic
@@ -66,10 +66,11 @@ _Please keep an open mind. No Gophers or Crabs will be harmed_
 ## Optimization factors: Important ones (common to both Go or Rust)
 
 - Client connection reuse
-- Creation of real or green thread per request
+- Creation of a stack (real or green thread) per request
 - Memory allocations and copies per request
+- Stack allocation vs heap allocation
 - General quality and efficiency of code
-- Library support
+- 3rd Party module/crate support
 
 ## Optimization factors: Less important
 
@@ -88,7 +89,7 @@ Also see https://google.github.io/flatbuffers/flatbuffers_benchmarks.html
 Handler code in Go
 
 - ctx object is reused and backed up by reusable buffers
-- promises `0 allocs/op` - that is no new malloc
+- promises `0 allocs/op` - that is no new heap alloc per request
 - No dangling references allowed when method terminates
 
 .code snippet01a.go
